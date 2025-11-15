@@ -39,6 +39,11 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+
+    - name: Show hardware info
+      run: |
+        chmod 755 ./scripts/show_hardware_info.sh
+        ./scripts/show_hardware_info.sh
   
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
