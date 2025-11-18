@@ -1,4 +1,4 @@
-name: Build_XIAOMI_mini
+name: Build_7628
 
 on: 
   repository_dispatch:
