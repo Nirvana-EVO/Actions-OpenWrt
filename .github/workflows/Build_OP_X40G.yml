@@ -1,4 +1,4 @@
-name: Build_X40G
+name: Build_040G
 
 on: 
   repository_dispatch:
@@ -12,6 +12,7 @@ on:
         options:
           - true
           - false
+  
 env:
   REPO_URL: https://github.com/xuxin1955/lede
   CONFIG_FILE: 'config/x40g.config'
@@ -28,11 +29,15 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-
+      with:
+        fetch-depth: 1
+        
     - name: Show hardware info
       run: |
         chmod 755 ./scripts/show_hardware_info.sh
         ./scripts/show_hardware_info.sh
+
+    
         
     - name: Free disk space
       uses: jlumbroso/free-disk-space@main
@@ -41,34 +46,34 @@ jobs:
         android: true
         dotnet: true
 
-    - name: Initialize environment
-      id: init
-      env:
-        DEBIAN_FRONTEND: noninteractive
+    - name: Initialization environment
       run: |
         sudo -E apt-get -y update
-        sudo -E apt-get -y install $(curl -fsSL https://raw.githubusercontent.com/xuxin1955/depend_ubuntu2204_openwrt/refs/heads/main/depend_ubuntu2204_openwrt)
+        sudo -E apt-get -y install $(curl -fsSL https://raw.githubusercontent.com/LeeHe-gif/depend_ubuntu2204_openwrt/main/depend_ubuntu2204_openwrt)
         sudo timedatectl set-timezone "${TZ}"
         echo "status=success" >> ${GITHUB_OUTPUT}
-      
-    
+        
+    - name: Clone source code
+      run: |
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        cd openwrt
+        echo "src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main" >> "feeds.conf.default"
 
-    - name: Setup disk space
+    - name: Setup dl dir
       run: |
         sudo mkdir -p -m 777 /mnt/openwrt/{dl,staging_dir,build_dir}
-        sudo chown -R $USER:$GROUPS /mnt/openwrt
         ln -sfn /mnt/openwrt/dl openwrt/dl
         ln -sfn /mnt/openwrt/staging_dir openwrt/staging_dir
         ln -sfn /mnt/openwrt/build_dir openwrt/build_dir
         
-    - name: Update feeds
+    - name: Update & Install feeds
       working-directory: ./openwrt
       run: |
         ./scripts/feeds update -a
-        
-        ./scripts/feeds install -a -f
+      
+        ./scripts/feeds install -a
 
-    - name: Configure build
+    - name: Configuration Customization
       run: |
         if [[ ! -f "${CONFIG_FILE}" ]]; then
           echo "❌ Error: Config file ${CONFIG_FILE} not found!"
@@ -79,21 +84,22 @@ jobs:
         cp -fv "${CONFIG_FILE}" openwrt/.config
         cd openwrt && make defconfig
         
-    - name: Download packages
-      working-directory: ./openwrt
+    - name: Download package
       run: |
-        make download -j$(nproc) || { echo "❌ Download failed"; exit 1; }
+        cd openwrt/
+        make download -j$(nproc) || { echo "::error::下载失败"; exit 1; }
         find dl -size -1024c -delete
-
+        
     - name: Compile Node host tools
       working-directory: ./openwrt
       run: |
        make package/feeds/packages/node/host/{clean,compile} V=s -j1
 
-    - name: Compile firmware
-      id: compile
-      working-directory: ./openwrt
+
+    - name: Compile the OpenWrt
+      id : compile
       run: |
+        cd openwrt/
         if [[ "${{ inputs.log_switch }}" == "true" ]]; then
             make -j$(nproc) V=s
         else
@@ -102,39 +108,39 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-        echo "status=success" >> ${GITHUB_OUTPUT}
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && steps.compile.outputs.status == 'success'
       run: |
-        cd openwrt/bin/targets/*/* || { echo "❌ 固件目录不存在"; exit 1; }
+        cd openwrt/bin/targets/*/* || { echo "::error::固件目录不存在"; exit 1; }
         rm -rf packages
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
-        
-    - name: Upload firmware directory
+
+    - name: Upload Artifact
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE }}/*
+        retention-days: 3
 
-    - name: Create release
+    - name: Generate release tag
       id: release
-      if: env.UPLOAD_RELEASE == 'true' && steps.organize.outputs.status == 'success'
+      if: env.UPLOAD_RELEASE == 'true'
       run: |
         echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
         cat <<EOF > release.txt
-        🚀 OpenWrt Firmware for 贝尔光猫_X40G
-        -----------------------------------
-        Build Date: $(date +"%Y-%m-%d %H:%M")
-        Source: $REPO_URL
-        Branch: $REPO_BRANCH
-        Kernel: 6.12.X
+        🚀 OpenWrt firmware for XIAOMI_R3
+        --------------
+        源码: $REPO_URL
+        分支: $REPO_BRANCH
+        时间: $(date +"%Y-%m-%d %H:%M")
         EOF
 
-    - name: Publish release
+    - name: Upload firmware to release
       uses: softprops/action-gh-release@v1
       if: steps.organize.outputs.status == 'success' && !cancelled()
       env:
@@ -144,7 +150,8 @@ jobs:
         body_path: release.txt
         files: ${{ env.FIRMWARE }}/*
 
-    - name: Cleanup workflows
+    - name: Delete workflow runs
+      if: always()
       uses: LeeHe-gif/delete-workflow-runs@main
       with:
         retain_days: 7
