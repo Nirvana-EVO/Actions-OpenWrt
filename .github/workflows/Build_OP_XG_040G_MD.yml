@@ -55,15 +55,21 @@ jobs:
         sudo timedatectl set-timezone "${TZ}"
         echo "status=success" >> ${GITHUB_OUTPUT}
         
+        
     - name: Clone source code
       id: codes
-      if: ${{ steps.init.outputs.status }} == 'success' && !cancelled()
+      if: steps.init.outputs.status == 'success' && success()
       run: |
-        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        git clone --depth 1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
         git clone --depth 1 https://github.com/vernesong/OpenClash.git OpenClash
         # cd openwrt
         # echo 'src-git modem https://github.com/FUjr/QModem.git;main' >> feeds.conf.default
-        echo "status=success" >> ${GITHUB_OUTPUT}
+        if [ -n "$GITHUB_OUTPUT" ]; then
+      echo "status=success" >> "$GITHUB_OUTPUT"
+      else
+      echo "::set-output name=status::success"
+      fi
+
         
     - name: Free up disk space
       run: |
