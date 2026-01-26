@@ -60,10 +60,6 @@ jobs:
         cd openwrt
         cat <<EOF >> feeds.conf.default
         src-git modem https://github.com/FUjr/QModem.git;main
-        src-git istore https://github.com/linkease/istore;main
-        src-git nas https://github.com/linkease/nas-packages.git;master
-        src-git nas_luci https://github.com/linkease/nas-packages-luci.git;main
-        src-git nikki https://github.com/nikkinikki-org/OpenWrt-nikki.git;main
         EOF
 
     - name: Setup disk space
