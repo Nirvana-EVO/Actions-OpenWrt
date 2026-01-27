@@ -64,10 +64,10 @@ jobs:
       run: |
         git clone --depth 1 "$REPO_URL" -b "$REPO_BRANCH" openwrt
         if [ -n "$GITHUB_OUTPUT" ]; then
-        echo "status=success" >> "$GITHUB_OUTPUT"
-        else
-        echo "::set-output name=status::success"
-        fi
+      echo "status=success" >> "$GITHUB_OUTPUT"
+      else
+      echo "::set-output name=status::success"
+      fi
        
     - name: Free up disk space
       run: |
@@ -77,6 +77,13 @@ jobs:
         ln -sfn /mnt/openwrt/staging_dir openwrt/staging_dir
         ln -sfn /mnt/openwrt/build_dir openwrt/build_dir
         df -H
+        
+    - name: Load custom feeds
+      run: |
+        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
+        chmod +x $DIY_P1_SH
+        cd openwrt
+        $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Update & Install feeds
       working-directory: ./openwrt
@@ -85,12 +92,6 @@ jobs:
         
         ./scripts/feeds install -a -f
         
-    - name: Load custom feeds
-      run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
 
     - name: Configuration Customization
       run: |
