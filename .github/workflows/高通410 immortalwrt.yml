@@ -150,14 +150,15 @@ jobs:
     - name: 查看 openwrt 目录中的文件
       run: ls -la openwrt/
       
-    - name: 上传编译前配置 ( config )
+    - name: 上传编译前配置 (config)
       uses: actions/upload-artifact@v4
       with:
-         name: config-before-build
-         path: |
-          openwrt/.config
-          openwrt/feeds.conf.default
-          include-hidden-files: true
+      name: config-before-build
+      path: 
+       - openwrt/.config
+       - openwrt/feeds.conf.default
+       include-hidden-files: true
+
 
     - name: Compile the firmware
       id: compile
