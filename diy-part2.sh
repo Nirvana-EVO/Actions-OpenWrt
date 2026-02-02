@@ -48,7 +48,7 @@ EOF
 git clone --depth=1 https://github.com/Haris131/helmiwrt-packages package/community
 
 #temp
-git clone https://github.com/gSpotx2f/luci-app-cpu-perf package/luci-app-cpu-perf
+# git clone https://github.com/gSpotx2f/luci-app-cpu-perf package/luci-app-cpu-perf
 git clone https://github.com/gSpotx2f/luci-app-cpu-status package/luci-app-cpu-status
 git clone https://github.com/gSpotx2f/luci-app-temp-status package/luci-app-temp-status
 git clone https://github.com/lkiuyu/DbusSmsForwardCPlus package/DbusSmsForwardCPlus
